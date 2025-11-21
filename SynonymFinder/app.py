@@ -5,7 +5,7 @@ from flask import Flask, jsonify, render_template, request
 
 from word_lookup import lookup_word, paraphrase_sentence
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='static', static_url_path='/static')
 
 
 @app.get("/")
