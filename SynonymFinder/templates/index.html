@@ -1,0 +1,1484 @@
+<!DOCTYPE html>
+<html lang="tr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TasoFinder - Akıllı Cümle Paraphrase</title>
+    
+    <!-- Favicon and App Icons -->
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon-32x32.png') }}" />
+    <link rel="icon" type="image/png" sizes="192x192" href="{{ url_for('static', filename='icon-192x192.png') }}" />
+    <link rel="icon" type="image/png" sizes="512x512" href="{{ url_for('static', filename='icon-512x512.png') }}" />
+    <link rel="shortcut icon" type="image/png" href="{{ url_for('static', filename='favicon-32x32.png') }}" />
+    
+    <!-- Apple Touch Icon (iPhone/iPad Home Screen) -->
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='apple-touch-icon-180x180.png') }}" />
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon-180x180.png') }}" />
+    
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#1a1a1a" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="TasoFinder" />
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
+    <style>
+      body {
+        font-family: 'Inter', -apple-system, BlinkSystemFont, 'Segoe UI', sans-serif;
+        background-image: url('/static/background.png');
+        background-size: cover;
+        background-position: center center;
+        background-attachment: fixed;
+        background-repeat: no-repeat;
+        background-color: #FFFFFF;
+        position: relative;
+        min-height: 100vh;
+      }
+      
+      /* Subtle overlay for better content readability */
+      body::before {
+        content: '';
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(255, 255, 255, 0.35);
+        z-index: 0;
+        pointer-events: none;
+      }
+      
+      /* Ensure content stays above background */
+      main {
+        position: relative;
+        z-index: 1;
+      }
+      
+      .tab-active {
+        color: #1a1a1a;
+        border-bottom-color: #1a1a1a !important;
+      }
+      .tab-inactive {
+        color: #666;
+        border-bottom-color: transparent !important;
+      }
+      .tab-inactive:hover {
+        color: #1a1a1a;
+      }
+      
+      /* Optimize for mobile */
+      @media (max-width: 768px) {
+        body {
+          background-attachment: scroll;
+          background-size: cover;
+        }
+        body::before {
+          background-color: rgba(255, 255, 255, 0.75);
+        }
+      }
+      
+      /* High contrast mode support */
+      @media (prefers-contrast: high) {
+        body {
+          background-image: none;
+        }
+        body::before {
+          display: none;
+        }
+      }
+    </style>
+  </head>
+  <body class="min-h-screen bg-white text-gray-900">
+    <main class="max-w-4xl mx-auto px-6 py-16">
+      <header class="text-center mb-16">
+        <div class="flex items-center justify-center gap-3 mb-4">
+          <h1 class="text-5xl font-light tracking-tight text-gray-900">
+          TasoFinder
+        </h1>
+          <span class="text-xs text-gray-400 font-light mt-2">
+            Coded By Tahsin Mert Mutlu
+          </span>
+        </div>
+        <p class="text-gray-600 text-lg font-light max-w-xl mx-auto">
+          Cümlelerinizi akıllıca yeniden ifade edin
+        </p>
+      </header>
+
+      <!-- Tab Navigation -->
+      <div class="flex gap-1 mb-8 border-b border-gray-200">
+        <button
+          id="tab-paraphrase"
+          class="tab-active flex-1 px-6 py-3 font-medium transition-colors duration-200 border-b-2 border-gray-900"
+          onclick="switchTab('paraphrase')"
+        >
+          Paraphrase
+        </button>
+        <button
+          id="tab-bulk"
+          class="tab-inactive flex-1 px-6 py-3 font-medium transition-colors duration-200 border-b-2 border-transparent"
+          onclick="switchTab('bulk')"
+        >
+          📝 Toplu Paraphrase
+        </button>
+        <button
+          id="tab-word"
+          class="tab-inactive flex-1 px-6 py-3 font-medium transition-colors duration-200 border-b-2 border-transparent"
+          onclick="switchTab('word')"
+        >
+          Kelime Ara
+        </button>
+      </div>
+
+      <!-- Paraphrase Section -->
+      <section id="section-paraphrase">
+        <form id="paraphrase-form" class="space-y-5 mb-4">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <label for="sentence-input" class="block text-sm font-medium text-gray-700">
+                Cümlenizi girin
+              </label>
+              <span class="text-xs text-gray-500 font-medium">
+                ⚡ <span class="hidden md:inline">Ctrl+Enter</span><span class="md:hidden">⌘+Enter</span> veya <span class="hidden md:inline">Cmd+Enter</span><span class="md:hidden">Ctrl+Enter</span> ile hızlıca oluşturun
+              </span>
+            </div>
+              <textarea
+                id="sentence-input"
+              rows="6"
+              placeholder="Paraphrase etmek istediğiniz cümleyi buraya yazın... (Ctrl+Enter veya Cmd+Enter ile hızlıca oluşturun)"
+              class="w-full px-5 py-4 text-lg border-2 border-gray-300 rounded-lg focus:outline-none focus:border-gray-900 focus:ring-2 focus:ring-gray-900 focus:ring-offset-0 transition-colors placeholder:text-gray-400 resize-none"
+                required
+              ></textarea>
+            </div>
+          
+          <!-- Submit Button and Turnitin Mode - Moved right below textarea -->
+          <div class="flex flex-col md:flex-row gap-4 items-center justify-center md:justify-end mb-4">
+            <div class="relative flex items-center gap-3 w-full md:w-auto">
+              <!-- Turnitin Mode Checkbox -->
+              <label class="flex items-center gap-3 cursor-pointer bg-gradient-to-r from-amber-50 to-yellow-50 border-2 border-amber-300 rounded-lg px-4 py-3 hover:from-amber-100 hover:to-yellow-100 transition-all group">
+                <input
+                  type="checkbox"
+                  id="anti-detection-checkbox"
+                  class="w-5 h-5 rounded border-2 border-amber-600 focus:ring-2 focus:ring-amber-500 cursor-pointer text-amber-600"
+                />
+                <span class="text-base font-semibold text-amber-900">🛡️ Turnitin Modu</span>
+                
+                <!-- Info Icon for Explanation -->
+                <button
+                  type="button"
+                  id="turnitin-info-btn"
+                  class="text-amber-600 hover:text-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-500 rounded-full p-1 transition-colors"
+                  title="Turnitin modu hakkında bilgi"
+                >
+                  <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </button>
+              </label>
+              
+              <!-- Expandable Explanation Panel -->
+              <div id="turnitin-explanation" class="hidden absolute top-full right-0 mt-2 w-96 max-w-[90vw] bg-gradient-to-r from-amber-50 to-yellow-50 border-2 border-amber-200 rounded-xl p-5 shadow-xl z-50">
+                <div class="flex items-center gap-2 mb-2">
+                  <span class="text-base font-bold text-amber-900">🛡️ Turnitin AI Dedektörüne Takılmaz Mod</span>
+                </div>
+                <p class="text-sm text-amber-800 leading-relaxed mb-2">
+                  Bu mod, <strong>Turnitin AI dedektöründen kaçınmak</strong> için <strong>en üst düzey</strong> gelişmiş algoritmalar kullanır:
+                </p>
+                <ul class="text-xs text-amber-700 space-y-1 ml-4 list-disc mb-2">
+                  <li>Kelimelerin <strong>%85-95'ini</strong> en az yaygın sinonimlerle değiştirir</li>
+                  <li><strong>N-gram benzerliğini azaltır</strong> (2-gram ve 3-gram analizi)</li>
+                  <li>Cümle yapısını <strong>tamamen yeniden düzenler</strong> (phrases, clauses)</li>
+                  <li><strong>Aktif/pasif dönüşüm</strong> ve kelime sırası değişiklikleri</li>
+                  <li><strong>En az kullanılan sinonimler</strong> (son %30) ile benzersizlik</li>
+                  <li><strong>Prepositional phrase</strong> yeniden düzenleme</li>
+                  <li>Orijinal cümleden <strong>minimum %70 kelime farklılığı</strong> garantisi</li>
+                  <li><strong>%60+ bigram ve %50+ trigram</strong> farklılık kontrolü</li>
+                  <li><strong>Kombine skor %65+</strong> farklılık garantisi (kelime+bigram+trigram)</li>
+                </ul>
+                <p class="text-xs text-amber-600 italic">
+                  ⚠️ Dikkat: Bu mod anlamı koruyarak maksimum değişiklik yapar. Sonucu gözden geçirmeyi unutmayın. 
+                  Turnitin'in AI dedektörüne karşı <strong>en üst düzey koruma</strong> sağlar.
+                </p>
+              </div>
+            </div>
+            
+            <button
+              type="submit"
+              class="inline-flex items-center justify-center gap-2 px-10 py-4 bg-gray-900 text-white rounded-lg font-semibold text-lg hover:bg-gray-800 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-2 shadow-lg w-full md:w-auto"
+            >
+              <span id="button-label-paraphrase">Paraphrase Oluştur</span>
+              <svg
+                id="button-spinner-paraphrase"
+                class="hidden h-5 w-5 animate-spin"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+              </svg>
+            </button>
+          </div>
+          
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+            <label class="flex flex-col gap-2">
+              <span class="text-sm font-medium text-gray-700">Varyasyon Sayısı</span>
+              <input
+                id="num-variations"
+                type="number"
+                min="1"
+                max="10"
+                value="5"
+                class="px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-gray-900 text-center font-medium"
+              />
+            </label>
+            <label class="flex flex-col gap-2">
+              <span class="text-sm font-medium text-gray-700">Stil Tonu</span>
+              <select
+                id="style-select"
+                class="px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-gray-900 font-medium cursor-pointer"
+              >
+                <option value="balanced">🎯 Dengeli</option>
+                <option value="formal">👔 Resmi</option>
+                <option value="casual">😊 Günlük</option>
+                <option value="academic" selected>🎓 Akademik</option>
+                <option value="simple">📖 Basit</option>
+              </select>
+            </label>
+            <label class="flex flex-col gap-2">
+              <span class="text-sm font-medium text-gray-700">Cümle Uzunluğu</span>
+              <select
+                id="length-select"
+                class="px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-gray-900 font-medium cursor-pointer"
+              >
+                <option value="same">↔️ Aynı</option>
+                <option value="shorter">⬇️ Daha Kısa</option>
+                <option value="longer">⬆️ Daha Uzun</option>
+              </select>
+            </label>
+          </div>
+        </form>
+        <p id="status-paraphrase" class="text-sm text-gray-500 mb-8"></p>
+      </section>
+
+      <!-- Bulk Paraphrase Section -->
+      <section id="section-bulk" class="hidden">
+        <div class="bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl p-6 mb-6 border border-gray-200">
+          <div class="flex items-start gap-4">
+            <div class="flex-shrink-0 w-12 h-12 rounded-full bg-gray-900 text-white flex items-center justify-center text-xl font-bold">
+              📝
+            </div>
+            <div class="flex-1">
+              <h3 class="text-lg font-semibold text-gray-900 mb-1">Toplu Paraphrase</h3>
+              <p class="text-sm text-gray-600">
+                Birden fazla paragrafı aynı anda paraphrase edin. Her paragrafı boş satırla ayırın veya numaralandırın.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <form id="bulk-paraphrase-form" class="space-y-6 mb-4">
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <label for="bulk-paragraphs-input" class="block text-sm font-medium text-gray-700">
+                Paragraflarınızı girin (her paragrafı boş satırla ayırın)
+              </label>
+              <span class="text-xs text-gray-500 font-medium">
+                ⚡ <span class="hidden md:inline">Ctrl+Enter</span><span class="md:hidden">⌘+Enter</span> veya <span class="hidden md:inline">Cmd+Enter</span><span class="md:hidden">Ctrl+Enter</span> ile hızlıca oluşturun
+              </span>
+            </div>
+              <textarea
+                id="bulk-paragraphs-input"
+              rows="12"
+              placeholder="Birinci paragrafınız buraya...&#10;&#10;İkinci paragrafınız buraya...&#10;&#10;Üçüncü paragrafınız buraya... (Ctrl+Enter veya Cmd+Enter ile hızlıca oluşturun)"
+              class="w-full px-5 py-4 text-base border-2 border-gray-300 rounded-lg focus:outline-none focus:border-gray-900 focus:ring-2 focus:ring-gray-900 focus:ring-offset-0 transition-colors placeholder:text-gray-400 resize-none font-mono"
+                required
+              ></textarea>
+            <div class="flex items-center justify-between mt-2">
+              <p class="text-xs text-gray-500">
+                <span id="bulk-paragraph-count">0</span> paragraf tespit edildi
+              </p>
+              <button
+                type="button"
+                onclick="clearBulkInput()"
+                class="text-xs text-gray-500 hover:text-gray-900 transition-colors"
+              >
+                ✕ Temizle
+              </button>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <label class="flex flex-col gap-2">
+              <span class="text-sm font-medium text-gray-700">Her Paragraf İçin Varyasyon</span>
+              <input
+                id="bulk-num-variations"
+                type="number"
+                min="1"
+                max="5"
+                value="3"
+                class="px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-gray-900 text-center font-medium"
+              />
+            </label>
+            <label class="flex flex-col gap-2">
+              <span class="text-sm font-medium text-gray-700">Stil Tonu</span>
+              <select
+                id="bulk-style-select"
+                class="px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-gray-900 font-medium cursor-pointer"
+              >
+                <option value="balanced">🎯 Dengeli</option>
+                <option value="formal">👔 Resmi</option>
+                <option value="casual">😊 Günlük</option>
+                <option value="academic" selected>🎓 Akademik</option>
+                <option value="simple">📖 Basit</option>
+              </select>
+            </label>
+            <label class="flex flex-col gap-2">
+              <span class="text-sm font-medium text-gray-700">Cümle Uzunluğu</span>
+              <select
+                id="bulk-length-select"
+                class="px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-gray-900 font-medium cursor-pointer"
+              >
+                <option value="same">↔️ Aynı</option>
+                <option value="shorter">⬇️ Daha Kısa</option>
+                <option value="longer">⬆️ Daha Uzun</option>
+              </select>
+            </label>
+        </div>
+
+          <div class="flex items-center justify-between pt-4 border-t border-gray-200">
+            <div class="flex items-center gap-4 text-sm text-gray-600">
+              <span id="bulk-status" class="font-medium"></span>
+              <div id="bulk-progress" class="hidden flex items-center gap-2">
+                <div class="w-48 h-2 bg-gray-200 rounded-full overflow-hidden">
+                  <div id="bulk-progress-bar" class="h-full bg-gradient-to-r from-blue-500 to-blue-600 transition-all duration-300" style="width: 0%"></div>
+                </div>
+                <span id="bulk-progress-text" class="text-xs font-medium">0%</span>
+              </div>
+            </div>
+            <button
+              type="submit"
+              class="inline-flex items-center justify-center gap-2 px-10 py-4 bg-gray-900 text-white rounded-lg font-semibold text-lg hover:bg-gray-800 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-2 shadow-lg"
+            >
+              <span id="bulk-button-label">🚀 Toplu Paraphrase Oluştur</span>
+              <svg
+                id="bulk-button-spinner"
+                class="hidden h-5 w-5 animate-spin"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+              </svg>
+            </button>
+          </div>
+        </form>
+
+        <!-- Bulk Results -->
+        <section id="bulk-results-section" class="mt-12 hidden space-y-8">
+          <div class="flex items-center justify-between">
+            <h2 class="text-xl font-semibold text-gray-900">📋 Toplu Paraphrase Sonuçları</h2>
+            <div class="flex items-center gap-3">
+              <button
+                onclick="exportBulkResults()"
+                id="export-bulk-btn"
+                class="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                💾 Dışa Aktar
+              </button>
+              <button
+                onclick="copyAllBulkResults()"
+                class="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                📋 Tümünü Kopyala
+              </button>
+            </div>
+          </div>
+          <div id="bulk-results" class="space-y-6"></div>
+        </section>
+      </section>
+
+      <!-- Word Lookup Section -->
+      <section id="section-word" class="hidden">
+        <form id="lookup-form" class="flex flex-col md:flex-row gap-3 mb-4">
+          <input
+            id="word-input"
+            type="text"
+            placeholder="Bir kelime girin..."
+            class="flex-1 px-4 py-3 text-base border border-gray-300 rounded focus:outline-none focus:border-gray-900 transition-colors placeholder:text-gray-400"
+            required
+          />
+          <button
+            type="submit"
+            class="inline-flex items-center justify-center gap-2 px-8 py-3 bg-gray-900 text-white rounded font-medium hover:bg-gray-800 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-2"
+          >
+            <span id="button-label-word">Ara</span>
+            <svg
+              id="button-spinner-word"
+              class="hidden h-4 w-4 animate-spin"
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+            >
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+            </svg>
+          </button>
+        </form>
+        <p id="status-word" class="text-sm text-gray-500 mb-8"></p>
+      </section>
+
+      <!-- Word Results -->
+      <section id="results-word" class="mt-12 grid gap-8 md:grid-cols-2 hidden">
+        <div>
+          <h2 class="text-sm font-medium text-gray-500 uppercase tracking-wide mb-4">Eş Anlamlılar</h2>
+          <ul id="synonyms" class="space-y-2 text-gray-900"></ul>
+          </div>
+
+        <div>
+          <h2 class="text-sm font-medium text-gray-500 uppercase tracking-wide mb-4">Zıt Anlamlılar</h2>
+          <ul id="antonyms" class="space-y-2 text-gray-900"></ul>
+        </div>
+
+        <div class="md:col-span-2">
+          <h2 class="text-sm font-medium text-gray-500 uppercase tracking-wide mb-4">İlgili Sözcükler</h2>
+          <ul id="related" class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2 text-gray-900"></ul>
+          </div>
+
+        <div class="md:col-span-2 pt-4 border-t border-gray-200">
+          <h2 class="text-sm font-medium text-gray-500 uppercase tracking-wide mb-4">Örnek Cümleler</h2>
+          <ul id="examples" class="space-y-3 text-gray-700"></ul>
+        </div>
+      </section>
+
+      <!-- Paraphrase Results -->
+      <section id="results-paraphrase" class="mt-12 hidden space-y-10">
+        <div class="bg-gray-50 rounded-lg p-6 border border-gray-200">
+          <h2 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Orijinal Cümle</h2>
+          <p id="original-sentence" class="text-gray-900 text-xl leading-relaxed"></p>
+        </div>
+
+        <!-- Turnitin Proof Variation -->
+        <div id="turnitin-proof-section" class="hidden bg-gradient-to-r from-amber-500 to-orange-600 rounded-xl p-8 shadow-2xl border-2 border-amber-600">
+          <div class="flex items-start justify-between mb-4">
+            <div class="flex-1">
+              <div class="flex items-center gap-3 mb-3">
+                <span class="text-white text-lg font-bold">🛡️ Turnitin AI Dedektörüne Takılmaz Paraphrase</span>
+                <span class="px-3 py-1 bg-white/30 text-white text-xs font-bold rounded-full">MAXIMUM GÜVENLİK</span>
+              </div>
+              <p id="turnitin-proof-text" class="text-white text-2xl leading-relaxed font-light mb-3"></p>
+              <div class="bg-white/20 rounded-lg p-3">
+                <p id="turnitin-proof-stats" class="text-white text-sm font-medium mb-2"></p>
+                <div class="space-y-2 text-xs text-white/90">
+          <div class="flex items-center gap-2">
+                    <span>✓</span>
+                    <span><strong>Kelime değişiklik oranı: %85-95</strong> (en üst düzey)</span>
+          </div>
+                  <div class="flex items-center gap-2">
+                    <span>✓</span>
+                    <span><strong>N-gram analizi:</strong> %60+ bigram, %50+ trigram farklılık</span>
+        </div>
+          <div class="flex items-center gap-2">
+                    <span>✓</span>
+                    <span><strong>Cümle yapısı:</strong> Tamamen yeniden düzenlendi (phrases, clauses)</span>
+          </div>
+                  <div class="flex items-center gap-2">
+                    <span>✓</span>
+                    <span><strong>Sinonimler:</strong> En az yaygın kelimeler (son %30) kullanıldı</span>
+        </div>
+                  <div class="flex items-center gap-2">
+                    <span>✓</span>
+                    <span><strong>Yapısal değişiklikler:</strong> Aktif/pasif dönüşüm, phrase reordering</span>
+          </div>
+                  <div class="flex items-center gap-2">
+                    <span>✓</span>
+                    <span><strong>Kombine skor:</strong> Minimum %65 farklılık garantisi</span>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <span>✓</span>
+                    <span><strong>Parmak izi:</strong> N-gram patterns tamamen kırıldı</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <button
+              id="copy-turnitin-btn"
+              onclick="copyTurnitinProof()"
+              class="flex-shrink-0 px-6 py-3 text-sm font-bold text-amber-900 bg-white rounded-lg hover:bg-amber-50 transition-colors shadow-xl"
+              title="Kopyala"
+            >
+              📋 Kopyala
+            </button>
+          </div>
+          <div class="bg-white/10 rounded-lg p-4 mt-4 border border-white/20">
+            <p class="text-white text-sm leading-relaxed">
+              <strong>⚠️ Önemli:</strong> Bu varyasyon <strong>en üst düzey</strong> Turnitin AI dedektöründen kaçınmak için 
+              gelişmiş algoritmalar (N-gram analizi, yapısal dönüşümler, maksimum sinonim değişikliği) kullanılarak oluşturulmuştur. 
+              Anlamın doğruluğunu kontrol etmeyi ve gerekirse küçük düzenlemeler yapmayı unutmayın.
+            </p>
+          </div>
+        </div>
+
+        <!-- Best Variation Highlight -->
+        <div id="best-variation-section" class="hidden bg-gradient-to-r from-gray-900 to-gray-800 rounded-xl p-8 shadow-xl border-2 border-gray-900">
+          <div class="flex items-start justify-between mb-4">
+            <div>
+              <div class="flex items-center gap-2 mb-2">
+                <span class="text-white text-sm font-semibold uppercase tracking-wide">✨ En İyi Paraphrase</span>
+                <span id="best-score-badge" class="px-2 py-1 bg-white/20 text-white text-xs font-medium rounded"></span>
+          </div>
+              <p id="best-variation-text" class="text-white text-2xl leading-relaxed font-light"></p>
+            </div>
+            <button
+              id="copy-best-btn"
+              onclick="copyBestVariation()"
+              class="flex-shrink-0 px-6 py-3 text-sm font-semibold text-gray-900 bg-white rounded-lg hover:bg-gray-100 transition-colors shadow-lg"
+              title="Kopyala"
+            >
+              Kopyala
+            </button>
+          </div>
+          <p id="best-variation-reason" class="text-gray-300 text-sm mt-4 italic"></p>
+        </div>
+
+        <div>
+          <div class="flex items-center justify-between mb-6">
+            <h2 class="text-lg font-semibold text-gray-900">Tüm Paraphrase Varyasyonları</h2>
+            <div class="flex items-center gap-3">
+              <button
+                id="toggle-view-btn"
+                onclick="toggleViewMode()"
+                class="px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                📊 Detaylı Görünüm
+              </button>
+              <span id="variation-count" class="text-sm text-gray-500"></span>
+          </div>
+          </div>
+          <div id="variations" class="space-y-4"></div>
+        </div>
+
+        <div id="word-replacements-section" class="pt-8 border-t border-gray-200 hidden">
+          <h2 class="text-sm font-semibold text-gray-900 mb-5">Kullanılan Kelime Değişimleri</h2>
+          <div id="word-replacements" class="space-y-4"></div>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      // Tab switching
+      function switchTab(tab) {
+        const wordTab = document.getElementById('tab-word');
+        const paraphraseTab = document.getElementById('tab-paraphrase');
+        const bulkTab = document.getElementById('tab-bulk');
+        const wordSection = document.getElementById('section-word');
+        const paraphraseSection = document.getElementById('section-paraphrase');
+        const bulkSection = document.getElementById('section-bulk');
+        const wordResults = document.getElementById('results-word');
+        const paraphraseResults = document.getElementById('results-paraphrase');
+
+        // Reset all tabs
+        [wordTab, paraphraseTab, bulkTab].forEach(t => {
+          t.classList.remove('tab-active', 'border-gray-900');
+          t.classList.add('tab-inactive', 'border-transparent');
+        });
+        
+        // Hide all sections
+        [wordSection, paraphraseSection, bulkSection].forEach(s => {
+          s.classList.add('hidden');
+        });
+        [wordResults, paraphraseResults].forEach(r => {
+          if (r) r.classList.add('hidden');
+        });
+
+        if (tab === 'paraphrase') {
+          paraphraseTab.classList.remove('tab-inactive', 'border-transparent');
+          paraphraseTab.classList.add('tab-active', 'border-gray-900');
+          paraphraseSection.classList.remove('hidden');
+        } else if (tab === 'bulk') {
+          bulkTab.classList.remove('tab-inactive', 'border-transparent');
+          bulkTab.classList.add('tab-active', 'border-gray-900');
+          bulkSection.classList.remove('hidden');
+        } else {
+          wordTab.classList.remove('tab-inactive', 'border-transparent');
+          wordTab.classList.add('tab-active', 'border-gray-900');
+          wordSection.classList.remove('hidden');
+        }
+      }
+
+      // Word Lookup
+      const lookupForm = document.getElementById('lookup-form');
+      const wordInput = document.getElementById('word-input');
+      const statusWord = document.getElementById('status-word');
+      const resultsWord = document.getElementById('results-word');
+      const buttonLabelWord = document.getElementById('button-label-word');
+      const buttonSpinnerWord = document.getElementById('button-spinner-word');
+
+      const listMap = {
+        synonyms: document.getElementById('synonyms'),
+        antonyms: document.getElementById('antonyms'),
+        related: document.getElementById('related'),
+        examples: document.getElementById('examples'),
+      };
+
+      const renderList = (items, listElement, emptyMessage) => {
+        listElement.innerHTML = '';
+        if (!items.length) {
+          listElement.innerHTML = `<li class="text-gray-400">${emptyMessage}</li>`;
+          return;
+        }
+        items.forEach((item) => {
+          const li = document.createElement('li');
+          li.className = 'text-base';
+          li.textContent = item;
+          listElement.appendChild(li);
+        });
+      };
+
+      const setLoadingWord = (isLoading) => {
+        buttonLabelWord.textContent = isLoading ? 'Sorgulanıyor...' : 'Ara';
+        buttonSpinnerWord.classList.toggle('hidden', !isLoading);
+      };
+
+      lookupForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const word = wordInput.value.trim();
+        if (!word) {
+          statusWord.textContent = 'Lütfen bir kelime giriniz.';
+          return;
+        }
+
+        statusWord.textContent = 'TasoFinder sözlüğü taranıyor...';
+        resultsWord.classList.add('hidden');
+        setLoadingWord(true);
+        lookupForm.classList.add('pointer-events-none', 'opacity-70');
+
+        try {
+          const response = await fetch(`/api/lookup?word=${encodeURIComponent(word)}`);
+          const payload = await response.json();
+
+          if (!response.ok) {
+            const message = payload.error || 'İstek başarısız.';
+            statusWord.textContent = message;
+            return;
+          }
+
+          statusWord.textContent = `"${payload.word}" kelimesi için sonuçlar`;
+          renderList(payload.synonyms, listMap.synonyms, 'Eş anlamlı bulunamadı.');
+          renderList(payload.antonyms, listMap.antonyms, 'Zıt anlamlı bulunamadı.');
+          renderList(payload.related, listMap.related, 'İlgili kelime bulunamadı.');
+          renderList(payload.examples, listMap.examples, 'Örnek cümle yok.');
+
+          resultsWord.classList.remove('hidden');
+        } catch (error) {
+          console.error(error);
+          statusWord.textContent = 'Sunucuya bağlanılamadı. Lütfen daha sonra tekrar deneyin.';
+        } finally {
+          setLoadingWord(false);
+          lookupForm.classList.remove('pointer-events-none', 'opacity-70');
+        }
+      });
+
+      // Paraphrase
+      const paraphraseForm = document.getElementById('paraphrase-form');
+      const sentenceInput = document.getElementById('sentence-input');
+      const numVariationsInput = document.getElementById('num-variations');
+      const statusParaphrase = document.getElementById('status-paraphrase');
+      const resultsParaphrase = document.getElementById('results-paraphrase');
+      const buttonLabelParaphrase = document.getElementById('button-label-paraphrase');
+      const buttonSpinnerParaphrase = document.getElementById('button-spinner-paraphrase');
+      const originalSentenceEl = document.getElementById('original-sentence');
+      const variationsEl = document.getElementById('variations');
+      const wordReplacementsSection = document.getElementById('word-replacements-section');
+      const wordReplacementsEl = document.getElementById('word-replacements');
+
+      // Keyboard shortcuts: Ctrl+Enter or Cmd+Enter to submit paraphrase
+      if (sentenceInput) {
+        sentenceInput.addEventListener('keydown', function(event) {
+          // Ctrl+Enter (Windows/Linux) or Cmd+Enter (Mac)
+          if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+            event.preventDefault();
+            if (paraphraseForm && !paraphraseForm.classList.contains('opacity-70')) {
+              paraphraseForm.dispatchEvent(new Event('submit'));
+            }
+          }
+        });
+      }
+
+      // Turnitin Mode - Info Button Toggle
+      const turnitinInfoBtn = document.getElementById('turnitin-info-btn');
+      const turnitinExplanation = document.getElementById('turnitin-explanation');
+      const antiDetectionCheckbox = document.getElementById('anti-detection-checkbox');
+      const turnitinLabel = antiDetectionCheckbox?.closest('label');
+      
+      if (turnitinInfoBtn && turnitinExplanation) {
+        // Toggle explanation panel when info button is clicked
+        turnitinInfoBtn.addEventListener('click', function(event) {
+          event.preventDefault();
+          event.stopPropagation();
+          
+          const isExpanded = !turnitinExplanation.classList.contains('hidden');
+          
+          if (isExpanded) {
+            // Close
+            turnitinExplanation.classList.add('hidden');
+          } else {
+            // Open
+            turnitinExplanation.classList.remove('hidden');
+          }
+        });
+        
+        // Prevent closing when clicking inside explanation panel
+        turnitinExplanation.addEventListener('click', function(event) {
+          event.stopPropagation();
+        });
+        
+        // Update label styling when checkbox is toggled
+        if (antiDetectionCheckbox && turnitinLabel) {
+          antiDetectionCheckbox.addEventListener('change', function() {
+            if (antiDetectionCheckbox.checked) {
+              turnitinLabel.classList.remove('from-amber-50', 'to-yellow-50', 'border-amber-300');
+              turnitinLabel.classList.add('from-amber-100', 'to-yellow-100', 'border-amber-500', 'ring-2', 'ring-amber-300');
+            } else {
+              turnitinLabel.classList.remove('from-amber-100', 'to-yellow-100', 'border-amber-500', 'ring-2', 'ring-amber-300');
+              turnitinLabel.classList.add('from-amber-50', 'to-yellow-50', 'border-amber-300');
+            }
+          });
+        }
+        
+        // Close explanation when clicking outside
+        document.addEventListener('click', function(event) {
+          if (!turnitinInfoBtn.contains(event.target) && 
+              !turnitinLabel?.contains(event.target) &&
+              !turnitinExplanation.contains(event.target) &&
+              !turnitinExplanation.classList.contains('hidden')) {
+            turnitinExplanation.classList.add('hidden');
+          }
+        });
+      }
+
+      const setLoadingParaphrase = (isLoading) => {
+        buttonLabelParaphrase.textContent = isLoading ? 'Oluşturuluyor...' : 'Paraphrase Oluştur';
+        buttonSpinnerParaphrase.classList.toggle('hidden', !isLoading);
+        const button = paraphraseForm.querySelector('button[type="submit"]');
+        if (isLoading) {
+          button.classList.add('opacity-75', 'cursor-not-allowed');
+        } else {
+          button.classList.remove('opacity-75', 'cursor-not-allowed');
+        }
+      };
+
+      paraphraseForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const sentence = sentenceInput.value.trim();
+        if (!sentence) {
+          statusParaphrase.textContent = 'Lütfen bir cümle giriniz.';
+          return;
+        }
+
+        const numVariations = parseInt(numVariationsInput.value) || 5;
+        const style = document.getElementById('style-select').value || 'academic';
+        const lengthPreference = document.getElementById('length-select').value || 'same';
+        const antiDetection = document.getElementById('anti-detection-checkbox').checked || false;
+
+        statusParaphrase.textContent = 'Cümle analiz ediliyor ve paraphrase oluşturuluyor...';
+        statusParaphrase.classList.remove('text-gray-900', 'font-medium');
+        statusParaphrase.classList.add('text-gray-500');
+        resultsParaphrase.classList.add('hidden');
+        setLoadingParaphrase(true);
+        paraphraseForm.classList.add('pointer-events-none', 'opacity-70');
+
+        try {
+          const response = await fetch('/api/paraphrase', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              sentence: sentence,
+              num_variations: numVariations,
+              style: style,
+              length_preference: lengthPreference,
+              anti_detection: antiDetection,
+            }),
+          });
+
+          const payload = await response.json();
+          
+          // Store for re-rendering
+          window.lastParaphrasePayload = payload;
+
+          if (!response.ok) {
+            const message = payload.error || 'İstek başarısız.';
+            statusParaphrase.textContent = message;
+            statusParaphrase.classList.remove('text-gray-900', 'font-medium');
+            statusParaphrase.classList.add('text-gray-500');
+            return;
+          }
+
+          statusParaphrase.textContent = `✓ ${payload.variations.length} paraphrase varyasyonu başarıyla oluşturuldu.`;
+          statusParaphrase.classList.remove('text-gray-500');
+          statusParaphrase.classList.add('text-gray-900', 'font-medium');
+          
+          // Show original
+          originalSentenceEl.textContent = payload.original;
+
+          // Show Turnitin Proof variation if available
+          const turnitinSection = document.getElementById('turnitin-proof-section');
+          if (payload.turnitin_proof && turnitinSection) {
+            const turnitinText = document.getElementById('turnitin-proof-text');
+            const turnitinCopyBtn = document.getElementById('copy-turnitin-btn');
+            
+            turnitinSection.classList.remove('hidden');
+            if (turnitinText) {
+              turnitinText.textContent = payload.turnitin_proof;
+            }
+            
+            // Calculate change statistics
+            const originalWords = payload.original.split(/\s+/).filter(w => w.trim());
+            const turnitinWords = payload.turnitin_proof.split(/\s+/).filter(w => w.trim());
+            const originalWordSet = new Set(originalWords.map(w => w.toLowerCase()));
+            const turnitinWordSet = new Set(turnitinWords.map(w => w.toLowerCase()));
+            const overlap = new Set([...originalWordSet].filter(w => turnitinWordSet.has(w)));
+            const changePercent = Math.round((1 - overlap.size / originalWordSet.size) * 100);
+            
+            const turnitinStats = document.getElementById('turnitin-proof-stats');
+            if (turnitinStats) {
+              turnitinStats.textContent = `Değişiklik Oranı: ${changePercent}% | Orijinal: ${originalWords.length} kelime → Paraphrase: ${turnitinWords.length} kelime`;
+            }
+          } else if (turnitinSection) {
+            turnitinSection.classList.add('hidden');
+          }
+          
+          // Show best variation if available
+          const bestSection = document.getElementById('best-variation-section');
+          const bestText = document.getElementById('best-variation-text');
+          const bestScoreBadge = document.getElementById('best-score-badge');
+          const bestReason = document.getElementById('best-variation-reason');
+          
+          // Show best variation if available and different from original
+          if (payload.best_variation && 
+              payload.best_score !== undefined && 
+              payload.best_variation.toLowerCase() !== payload.original.toLowerCase() &&
+              payload.best_score > 0.1) {
+            bestSection.classList.remove('hidden');
+            bestText.textContent = payload.best_variation;
+            const scorePercent = Math.round(payload.best_score * 100);
+            bestScoreBadge.textContent = `Kalite Skoru: ${scorePercent}%`;
+            
+            // Generate reason text based on score
+            let reason = '';
+            if (payload.best_score >= 0.8) {
+              reason = '✨ Bu varyasyon anlamı mükemmel şekilde koruyarak en iyi kelime değişikliklerini içeriyor. Semantic similarity ve kelime kalitesi açısından en üstün paraphrase.';
+            } else if (payload.best_score >= 0.6) {
+              reason = '✓ Bu varyasyon anlamı iyi koruyarak optimal kelime değişiklikleri sunuyor. Orijinal cümleden farklı ama anlamı koruyan kaliteli bir paraphrase.';
+            } else if (payload.best_score >= 0.4) {
+              reason = 'Bu varyasyon orijinal cümlenin anlamını koruyarak uygun paraphrase sağlıyor.';
+            } else {
+              reason = 'Bu varyasyon orijinal cümleden farklı ifadeler içeriyor.';
+            }
+            bestReason.textContent = reason;
+          } else {
+            bestSection.classList.add('hidden');
+          }
+
+          // Show variations
+          variationsEl.innerHTML = '';
+          const variationCountEl = document.getElementById('variation-count');
+          if (payload.variations.length === 0) {
+            variationsEl.innerHTML = '<p class="text-gray-400 py-8 text-center">Varyasyon oluşturulamadı.</p>';
+            if (variationCountEl) variationCountEl.textContent = '';
+          } else {
+            if (variationCountEl) {
+              variationCountEl.textContent = `${payload.variations.length} varyasyon`;
+            }
+            const stats = payload.variation_stats || [];
+            const isDetailView = variationsEl.classList.contains('detail-view');
+            
+            payload.variations.forEach((variation, index) => {
+              const stat = stats[index] || {};
+              const score = (stat.score || 0) * 100;
+              const similarity = stat.similarity_percent || 0;
+              const changes = stat.word_changes || 0;
+              const lengthPercent = stat.length_percent || 0;
+              const changedWords = stat.changed_words || [];
+              
+              const div = document.createElement('div');
+              
+              if (isDetailView) {
+                // Detailed view with statistics
+                div.className = 'bg-white border-2 border-gray-200 rounded-xl p-6 hover:border-gray-300 transition-all shadow-sm';
+              div.innerHTML = `
+                  <div class="flex items-start justify-between mb-4">
+                    <div class="flex items-center gap-3 flex-1">
+                      <span class="flex-shrink-0 w-10 h-10 rounded-full bg-gray-100 text-gray-700 font-bold flex items-center justify-center">${index + 1}</span>
+                      <div class="flex-1">
+                        <div class="flex items-center gap-2 mb-1">
+                          <span class="text-xs font-semibold text-gray-500">Kalite Skoru</span>
+                          <div class="flex items-center gap-2 flex-1">
+                            <div class="flex-1 max-w-32 h-2 bg-gray-200 rounded-full overflow-hidden">
+                              <div class="h-full bg-gradient-to-r from-blue-500 to-blue-600 rounded-full transition-all" style="width: ${score}%"></div>
+                            </div>
+                            <span class="text-sm font-semibold text-gray-900">${Math.round(score)}%</span>
+                          </div>
+                        </div>
+                        <div class="flex items-center gap-4 text-xs text-gray-500">
+                          <span>📊 Benzerlik: ${similarity.toFixed(1)}%</span>
+                          <span>🔄 Değişiklik: ${changes} kelime</span>
+                          <span>📏 Uzunluk: ${lengthPercent >= 0 ? '+' : ''}${lengthPercent.toFixed(1)}%</span>
+                        </div>
+                      </div>
+                    </div>
+                  <button
+                      onclick="copyToClipboard('${variation.replace(/'/g, "\\'").replace(/"/g, '&quot;')}')"
+                      class="flex-shrink-0 px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                    title="Kopyala"
+                  >
+                      Kopyala
+                  </button>
+                </div>
+                  <p class="text-gray-900 text-lg leading-relaxed mb-4">${variation}</p>
+                  ${changedWords.length > 0 ? `
+                    <div class="pt-4 border-t border-gray-100">
+                      <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Kelime Değişiklikleri</p>
+                      <div class="flex flex-wrap gap-2">
+                        ${changedWords.map(cw => `
+                          <span class="px-2 py-1 bg-gray-100 rounded text-xs">
+                            <span class="text-gray-600">${cw.from}</span>
+                            <span class="text-gray-400 mx-1">→</span>
+                            <span class="text-gray-900 font-medium">${cw.to}</span>
+                          </span>
+                        `).join('')}
+                      </div>
+                    </div>
+                  ` : ''}
+                `;
+              } else {
+                // Simple view
+                div.className = 'bg-white border-2 border-gray-200 rounded-lg p-5 hover:border-gray-300 transition-colors';
+              div.innerHTML = `
+                  <div class="flex items-start gap-4">
+                    <span class="flex-shrink-0 w-8 h-8 rounded-full bg-gray-100 text-gray-700 font-semibold flex items-center justify-center text-sm">${index + 1}</span>
+                    <div class="flex-1">
+                      <p class="text-gray-900 text-lg leading-relaxed mb-2">${variation}</p>
+                      <div class="flex items-center gap-3 text-xs text-gray-500">
+                        <span>Skor: ${Math.round(score)}%</span>
+                        <span>•</span>
+                        <span>${changes} değişiklik</span>
+                        <span>•</span>
+                        <span>${similarity.toFixed(1)}% benzer</span>
+                      </div>
+                    </div>
+                  <button
+                      onclick="copyToClipboard('${variation.replace(/'/g, "\\'").replace(/"/g, '&quot;')}')"
+                      class="flex-shrink-0 px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-colors"
+                    title="Kopyala"
+                  >
+                      Kopyala
+                  </button>
+                </div>
+              `;
+              }
+              
+              variationsEl.appendChild(div);
+            });
+          }
+
+          // Show word replacements
+          if (payload.word_replacements && Object.keys(payload.word_replacements).length > 0) {
+            wordReplacementsSection.classList.remove('hidden');
+            wordReplacementsEl.innerHTML = '';
+            Object.entries(payload.word_replacements).forEach(([word, synonyms]) => {
+              const div = document.createElement('div');
+              div.className = 'flex flex-wrap items-center gap-3 bg-gray-50 rounded-lg p-4';
+              div.innerHTML = `
+                <span class="font-semibold text-gray-900 text-base">${word}</span>
+                <span class="text-gray-400 text-lg">→</span>
+                ${synonyms.map(syn => `<span class="px-3 py-1.5 bg-white border border-gray-200 text-gray-800 text-sm rounded-lg font-medium">${syn}</span>`).join('')}
+              `;
+              wordReplacementsEl.appendChild(div);
+            });
+          } else {
+            wordReplacementsSection.classList.add('hidden');
+          }
+
+          resultsParaphrase.classList.remove('hidden');
+          
+          // Smooth scroll to results after a short delay
+          setTimeout(() => {
+            resultsParaphrase.scrollIntoView({ 
+              behavior: 'smooth', 
+              block: 'start',
+              inline: 'nearest'
+            });
+          }, 300);
+        } catch (error) {
+          console.error(error);
+          statusParaphrase.textContent = 'Sunucuya bağlanılamadı. Lütfen daha sonra tekrar deneyin.';
+        } finally {
+          setLoadingParaphrase(false);
+          paraphraseForm.classList.remove('pointer-events-none', 'opacity-70');
+        }
+      });
+
+      function copyToClipboard(text) {
+        navigator.clipboard.writeText(text).then(() => {
+          // Show temporary feedback
+          const button = event.target.closest('button');
+          if (button) {
+          const original = button.innerHTML;
+            button.innerHTML = 'Kopyalandı';
+            button.classList.add('text-gray-900');
+          setTimeout(() => {
+            button.innerHTML = original;
+              button.classList.remove('text-gray-900');
+            }, 1500);
+          }
+        });
+      }
+
+      function copyBestVariation() {
+        const bestText = document.getElementById('best-variation-text');
+        if (bestText && bestText.textContent) {
+          navigator.clipboard.writeText(bestText.textContent).then(() => {
+            const button = document.getElementById('copy-best-btn');
+            if (button) {
+              const original = button.innerHTML;
+              button.innerHTML = '✓ Kopyalandı';
+              button.classList.add('bg-green-100', 'text-green-900');
+              setTimeout(() => {
+                button.innerHTML = original;
+                button.classList.remove('bg-green-100', 'text-green-900');
+              }, 2000);
+            }
+          });
+        }
+      }
+
+      function copyTurnitinProof() {
+        const turnitinText = document.getElementById('turnitin-proof-text');
+        if (turnitinText && turnitinText.textContent) {
+          navigator.clipboard.writeText(turnitinText.textContent).then(() => {
+            const button = document.getElementById('copy-turnitin-btn');
+            if (button) {
+              const original = button.innerHTML;
+              button.innerHTML = '✓ Kopyalandı';
+              button.classList.add('bg-green-100', 'text-green-900');
+              setTimeout(() => {
+                button.innerHTML = original;
+                button.classList.remove('bg-green-100', 'text-green-900');
+              }, 2000);
+            }
+          });
+        }
+      }
+
+      function toggleViewMode() {
+        const variationsEl = document.getElementById('variations');
+        const toggleBtn = document.getElementById('toggle-view-btn');
+        
+        if (variationsEl.classList.contains('detail-view')) {
+          variationsEl.classList.remove('detail-view');
+          toggleBtn.textContent = '📊 Detaylı Görünüm';
+        } else {
+          variationsEl.classList.add('detail-view');
+          toggleBtn.textContent = '📝 Basit Görünüm';
+        }
+        
+        // Re-render variations with new view mode
+        if (window.lastParaphrasePayload) {
+          const payload = window.lastParaphrasePayload;
+          const variationCountEl = document.getElementById('variation-count');
+          variationsEl.innerHTML = '';
+          
+          if (payload.variations && payload.variations.length > 0) {
+            const stats = payload.variation_stats || [];
+            const isDetailView = variationsEl.classList.contains('detail-view');
+            
+            payload.variations.forEach((variation, index) => {
+              const stat = stats[index] || {};
+              const score = (stat.score || 0) * 100;
+              const similarity = stat.similarity_percent || 0;
+              const changes = stat.word_changes || 0;
+              const lengthPercent = stat.length_percent || 0;
+              const changedWords = stat.changed_words || [];
+              
+              const div = document.createElement('div');
+              
+              if (isDetailView) {
+                div.className = 'bg-white border-2 border-gray-200 rounded-xl p-6 hover:border-gray-300 transition-all shadow-sm';
+                div.innerHTML = `
+                  <div class="flex items-start justify-between mb-4">
+                    <div class="flex items-center gap-3 flex-1">
+                      <span class="flex-shrink-0 w-10 h-10 rounded-full bg-gray-100 text-gray-700 font-bold flex items-center justify-center">${index + 1}</span>
+                      <div class="flex-1">
+                        <div class="flex items-center gap-2 mb-1">
+                          <span class="text-xs font-semibold text-gray-500">Kalite Skoru</span>
+                          <div class="flex items-center gap-2 flex-1">
+                            <div class="flex-1 max-w-32 h-2 bg-gray-200 rounded-full overflow-hidden">
+                              <div class="h-full bg-gradient-to-r from-blue-500 to-blue-600 rounded-full transition-all" style="width: ${score}%"></div>
+                            </div>
+                            <span class="text-sm font-semibold text-gray-900">${Math.round(score)}%</span>
+                          </div>
+                        </div>
+                        <div class="flex items-center gap-4 text-xs text-gray-500">
+                          <span>📊 Benzerlik: ${similarity.toFixed(1)}%</span>
+                          <span>🔄 Değişiklik: ${changes} kelime</span>
+                          <span>📏 Uzunluk: ${lengthPercent >= 0 ? '+' : ''}${lengthPercent.toFixed(1)}%</span>
+                        </div>
+                      </div>
+                    </div>
+                    <button onclick="copyToClipboard('${variation.replace(/'/g, "\\'").replace(/"/g, '&quot;')}')" class="flex-shrink-0 px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">Kopyala</button>
+                  </div>
+                  <p class="text-gray-900 text-lg leading-relaxed mb-4">${variation}</p>
+                  ${changedWords.length > 0 ? `<div class="pt-4 border-t border-gray-100"><p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Kelime Değişiklikleri</p><div class="flex flex-wrap gap-2">${changedWords.map(cw => `<span class="px-2 py-1 bg-gray-100 rounded text-xs"><span class="text-gray-600">${cw.from}</span><span class="text-gray-400 mx-1">→</span><span class="text-gray-900 font-medium">${cw.to}</span></span>`).join('')}</div></div>` : ''}
+                `;
+              } else {
+                div.className = 'bg-white border-2 border-gray-200 rounded-lg p-5 hover:border-gray-300 transition-colors';
+                div.innerHTML = `
+                  <div class="flex items-start gap-4">
+                    <span class="flex-shrink-0 w-8 h-8 rounded-full bg-gray-100 text-gray-700 font-semibold flex items-center justify-center text-sm">${index + 1}</span>
+                    <div class="flex-1">
+                      <p class="text-gray-900 text-lg leading-relaxed mb-2">${variation}</p>
+                      <div class="flex items-center gap-3 text-xs text-gray-500">
+                        <span>Skor: ${Math.round(score)}%</span><span>•</span><span>${changes} değişiklik</span><span>•</span><span>${similarity.toFixed(1)}% benzer</span>
+                      </div>
+                    </div>
+                    <button onclick="copyToClipboard('${variation.replace(/'/g, "\\'").replace(/"/g, '&quot;')}')" class="flex-shrink-0 px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-colors">Kopyala</button>
+                  </div>
+                `;
+              }
+              variationsEl.appendChild(div);
+            });
+          }
+        }
+      }
+
+      // ========== TOPLU PARAPHRASE ÖZELLİKLERİ ==========
+
+      // Bulk Paraphrase Form Handler
+      const bulkForm = document.getElementById('bulk-paraphrase-form');
+      const bulkInput = document.getElementById('bulk-paragraphs-input');
+      const bulkParagraphCount = document.getElementById('bulk-paragraph-count');
+      const bulkStatus = document.getElementById('bulk-status');
+      const bulkProgress = document.getElementById('bulk-progress');
+      const bulkProgressBar = document.getElementById('bulk-progress-bar');
+      const bulkProgressText = document.getElementById('bulk-progress-text');
+      const bulkButtonLabel = document.getElementById('bulk-button-label');
+      const bulkButtonSpinner = document.getElementById('bulk-button-spinner');
+      const bulkResultsSection = document.getElementById('bulk-results-section');
+      const bulkResults = document.getElementById('bulk-results');
+
+      // Count paragraphs as user types
+      if (bulkInput) {
+        bulkInput.addEventListener('input', function() {
+          const paragraphs = parseParagraphs(this.value);
+          bulkParagraphCount.textContent = paragraphs.length;
+        });
+        
+        // Keyboard shortcuts: Ctrl+Enter or Cmd+Enter to submit bulk paraphrase
+        bulkInput.addEventListener('keydown', function(event) {
+          // Ctrl+Enter (Windows/Linux) or Cmd+Enter (Mac)
+          if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+            event.preventDefault();
+            if (bulkForm && !bulkForm.classList.contains('opacity-70')) {
+              bulkForm.dispatchEvent(new Event('submit'));
+            }
+          }
+        });
+      }
+
+      function parseParagraphs(text) {
+        if (!text || !text.trim()) return [];
+        // Split by double newline or single newline if followed by uppercase/numbers
+        const paragraphs = text
+          .split(/\n\s*\n/)
+          .map(p => p.trim())
+          .filter(p => p.length > 0);
+        
+        // If no double newlines, try splitting by single newlines (if they look like paragraph breaks)
+        if (paragraphs.length <= 1) {
+          const lines = text.split('\n').map(l => l.trim()).filter(l => l);
+          return lines;
+        }
+        
+        return paragraphs;
+      }
+
+      function clearBulkInput() {
+        bulkInput.value = '';
+        bulkParagraphCount.textContent = '0';
+        bulkResultsSection.classList.add('hidden');
+        bulkResults.innerHTML = '';
+      }
+
+      if (bulkForm) {
+        bulkForm.addEventListener('submit', async (event) => {
+          event.preventDefault();
+          
+          const text = bulkInput.value.trim();
+          if (!text) {
+            bulkStatus.textContent = 'Lütfen paragraflarınızı girin.';
+            bulkStatus.classList.add('text-red-600');
+            return;
+          }
+
+          const paragraphs = parseParagraphs(text);
+          if (paragraphs.length === 0) {
+            bulkStatus.textContent = 'Geçerli paragraf bulunamadı.';
+            bulkStatus.classList.add('text-red-600');
+            return;
+          }
+
+          if (paragraphs.length > 50) {
+            bulkStatus.textContent = 'Maksimum 50 paragraf işlenebilir.';
+            bulkStatus.classList.add('text-red-600');
+            return;
+          }
+
+          const numVariations = parseInt(document.getElementById('bulk-num-variations').value) || 3;
+          const style = document.getElementById('bulk-style-select').value || 'academic';
+          const lengthPreference = document.getElementById('bulk-length-select').value || 'same';
+
+          // Update UI
+          bulkStatus.textContent = `${paragraphs.length} paragraf işleniyor...`;
+          bulkStatus.classList.remove('text-red-600', 'text-green-600');
+          bulkStatus.classList.add('text-gray-600');
+          bulkProgress.classList.remove('hidden');
+          bulkProgressBar.style.width = '0%';
+          bulkProgressText.textContent = '0%';
+          bulkButtonLabel.textContent = 'İşleniyor...';
+          bulkButtonSpinner.classList.remove('hidden');
+          bulkForm.classList.add('pointer-events-none', 'opacity-70');
+          bulkResultsSection.classList.add('hidden');
+          bulkResults.innerHTML = '';
+
+          try {
+            const response = await fetch('/api/bulk-paraphrase', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                paragraphs: paragraphs,
+                num_variations: numVariations,
+                style: style,
+                length_preference: lengthPreference,
+              }),
+            });
+
+            const payload = await response.json();
+
+            if (!response.ok) {
+              bulkStatus.textContent = payload.error || 'İstek başarısız.';
+              bulkStatus.classList.remove('text-gray-600');
+              bulkStatus.classList.add('text-red-600');
+              return;
+            }
+
+            // Show results
+            bulkStatus.textContent = `✓ ${payload.success} paragraf başarıyla işlendi${payload.errors > 0 ? `, ${payload.errors} hata` : ''}`;
+            bulkStatus.classList.remove('text-gray-600', 'text-red-600');
+            bulkStatus.classList.add('text-green-600');
+            bulkProgressBar.style.width = '100%';
+            bulkProgressText.textContent = '100%';
+
+            // Render results
+            renderBulkResults(payload);
+            bulkResultsSection.classList.remove('hidden');
+            
+            // Smooth scroll to results after a short delay
+            setTimeout(() => {
+              bulkResultsSection.scrollIntoView({ 
+                behavior: 'smooth', 
+                block: 'start',
+                inline: 'nearest'
+              });
+            }, 300);
+
+            // Store for export
+            window.lastBulkPayload = payload;
+
+          } catch (error) {
+            console.error(error);
+            bulkStatus.textContent = 'Sunucuya bağlanılamadı. Lütfen daha sonra tekrar deneyin.';
+            bulkStatus.classList.remove('text-gray-600', 'text-green-600');
+            bulkStatus.classList.add('text-red-600');
+          } finally {
+            bulkButtonLabel.textContent = '🚀 Toplu Paraphrase Oluştur';
+            bulkButtonSpinner.classList.add('hidden');
+            bulkForm.classList.remove('pointer-events-none', 'opacity-70');
+            
+            setTimeout(() => {
+              bulkProgress.classList.add('hidden');
+            }, 2000);
+          }
+        });
+      }
+
+      function renderBulkResults(payload) {
+        bulkResults.innerHTML = '';
+        
+        if (!payload.results || payload.results.length === 0) {
+          bulkResults.innerHTML = '<p class="text-gray-500 text-center py-8">Sonuç bulunamadı.</p>';
+          return;
+        }
+
+        payload.results.forEach((item, index) => {
+          const result = item.result;
+          const div = document.createElement('div');
+          div.className = 'bg-white border-2 border-gray-200 rounded-xl p-6 hover:border-gray-300 transition-all shadow-sm';
+          
+          const bestVariation = result.best_variation || result.original;
+          const bestScore = result.best_score || 0;
+          
+          div.innerHTML = `
+            <div class="flex items-start justify-between mb-4">
+              <div class="flex-1">
+                <div class="flex items-center gap-3 mb-3">
+                  <span class="flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold flex items-center justify-center">
+                    ${item.index + 1}
+                  </span>
+                  <div>
+                    <h3 class="text-lg font-semibold text-gray-900 mb-1">Paragraf ${item.index + 1}</h3>
+                    <div class="flex items-center gap-3 text-xs text-gray-500">
+                      <span>✨ En İyi Skor: ${Math.round(bestScore * 100)}%</span>
+                      <span>📊 ${result.variations ? result.variations.length : 0} varyasyon</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <button
+                onclick="copyBulkParagraph('${bestVariation.replace(/'/g, "\\'").replace(/"/g, '&quot;')}', ${item.index})"
+                class="flex-shrink-0 px-4 py-2 text-sm font-medium text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                title="En İyi Paraphrase'ı Kopyala"
+              >
+                📋 Kopyala
+              </button>
+            </div>
+            
+            <div class="space-y-4">
+              <div>
+                <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Orijinal</p>
+                <p class="text-gray-700 text-base leading-relaxed bg-gray-50 p-3 rounded-lg">${result.original}</p>
+              </div>
+              
+              <div>
+                <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">✨ En İyi Paraphrase</p>
+                <p class="text-gray-900 text-lg leading-relaxed font-medium bg-blue-50 p-4 rounded-lg border border-blue-200">
+                  ${bestVariation}
+                </p>
+              </div>
+              
+              ${result.variations && result.variations.length > 1 ? `
+                <div>
+                  <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Diğer Varyasyonlar</p>
+                  <div class="space-y-2">
+                    ${result.variations.slice(1, 4).map((v, idx) => `
+                      <div class="flex items-start gap-2 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                        <span class="text-gray-400 text-sm font-medium">${idx + 2}.</span>
+                        <p class="text-gray-700 text-sm flex-1">${v}</p>
+                        <button
+                          onclick="copyToClipboard('${v.replace(/'/g, "\\'").replace(/"/g, '&quot;')}')"
+                          class="text-xs px-2 py-1 text-gray-600 border border-gray-300 rounded hover:bg-gray-100 transition-colors"
+                        >
+                          Kopyala
+                        </button>
+                      </div>
+                    `).join('')}
+                  </div>
+                </div>
+              ` : ''}
+            </div>
+          `;
+          
+          bulkResults.appendChild(div);
+        });
+
+        // Show errors if any
+        if (payload.errors_detail && payload.errors_detail.length > 0) {
+          const errorDiv = document.createElement('div');
+          errorDiv.className = 'bg-red-50 border-2 border-red-200 rounded-xl p-6';
+          errorDiv.innerHTML = `
+            <h3 class="text-lg font-semibold text-red-900 mb-3">⚠️ İşlenemeyen Paragraflar</h3>
+            <div class="space-y-2">
+              ${payload.errors_detail.map(err => `
+                <div class="p-3 bg-white rounded-lg border border-red-200">
+                  <p class="text-sm text-gray-700 mb-1"><strong>Paragraf ${err.index + 1}:</strong> ${err.original || 'Boş paragraf'}</p>
+                  <p class="text-xs text-red-600">${err.error || 'İşleme hatası'}</p>
+                </div>
+              `).join('')}
+            </div>
+          `;
+          bulkResults.appendChild(errorDiv);
+        }
+      }
+
+      function copyBulkParagraph(text, index) {
+        navigator.clipboard.writeText(text).then(() => {
+          const button = event.target.closest('button');
+          if (button) {
+            const original = button.innerHTML;
+            button.innerHTML = '✓ Kopyalandı';
+            button.classList.add('bg-green-100', 'text-green-900');
+            setTimeout(() => {
+              button.innerHTML = original;
+              button.classList.remove('bg-green-100', 'text-green-900');
+            }, 2000);
+          }
+        });
+      }
+
+      function copyAllBulkResults() {
+        if (!window.lastBulkPayload || !window.lastBulkPayload.results) {
+          alert('Kopyalanacak sonuç yok.');
+          return;
+        }
+
+        const allText = window.lastBulkPayload.results.map((item, idx) => {
+          const best = item.result.best_variation || item.result.original;
+          return `Paragraf ${idx + 1}:\n${best}`;
+        }).join('\n\n');
+
+        navigator.clipboard.writeText(allText).then(() => {
+          alert('Tüm en iyi paraphrase\'lar kopyalandı!');
+        });
+      }
+
+      function exportBulkResults() {
+        if (!window.lastBulkPayload) {
+          alert('İndirilecek sonuç yok.');
+          return;
+        }
+
+        const payload = window.lastBulkPayload;
+        const data = {
+          timestamp: new Date().toISOString(),
+          settings: payload.settings,
+          success: payload.success,
+          errors: payload.errors,
+          results: payload.results.map(item => ({
+            index: item.index,
+            original: item.original,
+            best_variation: item.result.best_variation,
+            best_score: item.result.best_score,
+            all_variations: item.result.variations,
+            stats: item.result.variation_stats
+          }))
+        };
+
+        const json = JSON.stringify(data, null, 2);
+        const blob = new Blob([json], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `tasofind-bulk-paraphrase-${Date.now()}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+    </script>
+  </body>
+</html>
