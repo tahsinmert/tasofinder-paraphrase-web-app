@@ -1,20 +1,11 @@
 """TasoFind Flask application."""
 from __future__ import annotations
 
-import os
 from flask import Flask, jsonify, render_template, request
 
 from word_lookup import lookup_word, paraphrase_sentence
 
-# Get the directory where app.py is located
-app_dir = os.path.dirname(os.path.abspath(__file__))
-
-app = Flask(
-    __name__,
-    static_folder=os.path.join(app_dir, 'static'),
-    static_url_path='/static',
-    template_folder=os.path.join(app_dir, 'templates')
-)
+app = Flask(__name__, static_folder='static', static_url_path='/static')
 
 
 @app.get("/")
